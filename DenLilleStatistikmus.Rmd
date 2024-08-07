@@ -1,0 +1,657 @@
+---
+title: "DenLilleStatistikmus"
+author: "Johanne Brandhøj Würtz"
+date: "2024-07-30"
+---
+
+Formålet med dette script er at give en kort introduktion til nogle af de generelt anvendelige funktioner, der relaterer sig til deskriptiv statistik i R. 
+
+Deskriptiv statistik er den genre indenfor emnet, der beskæftiger sig med reelle tal. Det vil sige de faktiske observationer, der er dannet på baggrund af en undersøgelse.
+Det er inden for deskriptiv statistik, at man udregner sum, gennemsnit, procent etc.
+Som en hovedregel kan man sige, at deskriptiv statistik er bagudrettet - dvs. at man regner med tal, der baserer sig på observatrioner.
+Som modpol kan man sige, at stokastisk statistik er fremadrettet - dvs. at man foretager såkaldt sandsynlighedsregning, der går ud på at 'spå' fremtiden baseret på opservationer fra fortiden. Dette vil blive uddybet yderligere ved andet datasæt.
+
+##Forberedelse
+
+Ud over de 'sædvanlige' pakker anvender vi også pakken summarytools. Den indeholder forskellige statistiske funktioner såsom freq() og descr() 
+
+```{r Installer pakker}
+install.packages("summarytools")
+install.packages("ltm")
+```
+
+
+```{r Load pakker}
+library(readxl)
+library(tidyverse)
+library(ggplot2) 
+library(summarytools)
+library(ltm)
+```
+
+##Data
+Vi vil komme til at arbejde med to forskellige datasæt, der begge indeholder data omhandlende studerende. Det ene datasæt omhandler uddannelse og uddannelsesniveau mm., hvor det andet datasæt tager udgangspunkt i en række eksamensresultater. De to datasæt har som sådan ikke noget med hinanden at gøre på nær det faktum, at de begge beskæftiger sig med studerende.
+
+##Første datasæt og deskriptiv statistik
+Vi starter med at arbejde med datasættet omhandlende uddannelse og uddannelsesniveau 
+
+```{r Indlæs første datasæt}
+#datasæt omhandlende uddannelse og uddannelsesniveau
+student_edu_df <- read_csv("data/student_education.csv")
+
+```
+Det næste step er at tjekke, hviket data vi har med at gøre og hvordan det er opbygget  
+
+```{r Data overblik}
+
+glimpse(student_edu_df)
+head(student_edu_df)
+
+```
+Datasættet indeholder 13 kolonner og 2129 rækker 
+
+
+```{r Data indblik}
+#unique()
+unique(student_edu_df$enrolled_university)
+
+#xtabs
+#Univariat tabel (en variabel)
+xtabs(~ enrolled_university, student_edu_df)
+
+#Bivariat tabel (bivariat = 2 variabler)
+xtabs(~ enrolled_university + education_level, student_edu_df)
+
+#freq()
+freq(student_edu_df$education_level, order = "freq")
+
+```
+unique() er en hyppigt brugt funktion, der giver et hurtigt overblik over en variabel. De fleste, der har programmeret i R, har anvendt denne.
+
+xtabs() derimod er en ofte glemt funktion, der giver et hurtigt overblik over en eller flere variable og deres frekvens. Den er super anvendelig når man har med statistik at gøre, da man både kan få vist en eller flere variabler i en tabeloversigt.  
+
+freq() kan ligesom unique og xtabs give et overblik over frekvens. Det er dog ligesom med unique() kun muligt at bruge den på en variabel ad gangen. freq() giver både indsigt i den egntlige frekvens i reelle tal og i procent (med og uden NA's) samt den kummulerede frekvens (med og uden NA's). 
+
+```{r Data indblik fortsat}
+ggplot(data=student_edu_df, aes(x=education_level)) +
+  geom_bar()
+```
+En anden måde at danne sig et hurtigt indblik er ved at plotte ens variabel.
+
+
+##Spørgsmål 1: Find ud af hvor mange, der har en Master med Business Degree?
+```{r Løsningsforslag 1}
+
+#Undersøger de forskellige attributter for at lokalisere de relevante kolonner
+glimpse(student_edu_df)
+
+#Find de steder, hvor education_level er lig med Masters samt, hvor major_discipline er lig Business Degree
+MaBusDe <- which(student_edu_df$education_level=="Masters" & student_edu_df$major_discipline=="Business Degree")
+
+#Resultatet tælles sammen for at finde svaret
+length(MaBusDe)
+
+#Alternativ løsning ved hjælp af xtabs
+xtabs(~ major_discipline + education_level, student_edu_df)
+
+
+```
+Der er altså 12 personer, der har en Master med Business Degree
+
+##Spørgsmål 2: Hvordan kunne en visualisering se ud, som viser fordelingen af uddannelsesniveau og faglig disciplin?
+```{r Løsningsforslag 2}
+
+#Tabelopstilling
+xtabs(~ education_level + major_discipline, data=student_edu_df)
+
+#Barplot  
+student_edu_df %>%
+  dplyr::select(education_level,major_discipline, enrollee_id) %>%
+  group_by(education_level, major_discipline) %>%
+  count(enrollee_id) %>% 
+  ggplot(aes(education_level, 
+             fill = major_discipline))+
+  geom_bar(position = "stack")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+
+#Barplot uden NA's (stacked)
+student_edu_df %>%
+  dplyr::select(education_level,major_discipline, enrollee_id) %>%
+  drop_na(major_discipline) %>%
+  group_by(education_level, major_discipline) %>%
+  count(enrollee_id) %>% 
+  ggplot(aes(education_level, 
+             fill = major_discipline))+
+  geom_bar(position = "stack")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+
+#Barplot uden NA's (filled)
+student_edu_df %>%
+  dplyr::select(education_level,major_discipline, enrollee_id) %>%
+  drop_na(major_discipline) %>%
+  group_by(education_level, major_discipline) %>%
+  count(enrollee_id) %>% 
+  ggplot(aes(education_level, 
+             fill = major_discipline))+
+  geom_bar(position = "fill")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+
+
+```
+##Spørgsmål 3: Kan man gruppere major_discipline i færre, men fortsat meningsfyldte grupperinger?
+```{r Løsningsforslag 3}
+
+#Tjek værdier
+freq(student_edu_df$major_discipline)
+
+#Skaber ny variabel grouped_discipline
+student_edu_df_2 <- student_edu_df %>%
+    mutate(grouped_discipline = 
+           case_when(major_discipline == "Arts" ~ "Arts&Hum", 
+                     major_discipline == "Humanities" ~ "Arts&Hum",
+                     major_discipline == "Business Degree" ~ "Business",
+                     major_discipline == "STEM" ~ "STEM",
+                     major_discipline == "Other" ~ "Not specified",
+                     major_discipline == "No Major" ~ "Not specified",
+                     is.na(major_discipline) ~ "Not specified"
+                    )
+         )
+#Tjek nye værdier
+freq(student_edu_df_2$grouped_discipline)
+
+#Visualisering
+student_edu_df_2 %>% 
+ggplot(aes(grouped_discipline, 
+           fill = grouped_discipline))+
+  geom_bar(position = "stack")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+```
+##Spørgsmål 4: Sammenlign visualiseringerne for de grupperede vs. de ikke grupperede discipliner
+```{r Løsningsforslag 4}
+
+#Barplot uden NA's (stacked) - oprindelig inddeling
+student_edu_df %>%
+  dplyr::select(education_level, major_discipline, enrollee_id) %>%
+  drop_na(major_discipline) %>%
+  drop_na(education_level) %>%
+  group_by(education_level, major_discipline) %>%
+  count(enrollee_id) %>% 
+  ggplot(aes(education_level, 
+             fill = major_discipline))+
+  geom_bar(position = "stack")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+
+
+#Barplot uden NA's (stacked) - ny inddeling
+student_edu_df_2 %>% 
+  dplyr::select(education_level,grouped_discipline, enrollee_id) %>%
+  drop_na(grouped_discipline) %>%
+  drop_na(education_level) %>%
+  group_by(education_level, grouped_discipline) %>%
+  count(enrollee_id) %>% 
+ggplot(aes(education_level, 
+           fill = grouped_discipline))+
+  geom_bar(position = "stack")+
+  scale_fill_manual(values=c('#ffe0bd','red','#66545e',  '#a39193', '#aa6f73', '#eea990'))
+
+
+```
+##Spørgsmål 5: Hvilken af de tre kategorier har mest erfaring - mænd, kvinder eller andre?
+```{r Løsningsforslag 5}
+
+#Tjek værdier
+xtabs(~ gender + experience , data=student_edu_df_2)
+
+#Omkoder for at forsimple udtrykket
+student_edu_df_3 <- student_edu_df_2 %>%
+  mutate(gr_experience = case_when(experience == "<1" ~ "Low",
+                      experience == ">20" ~ "High",
+                      experience == "19" ~ "High",           
+                      experience == "18" ~ "High",           
+                      experience == "17" ~ "High",           
+                      experience == "16" ~ "High",                      
+                      experience == "15" ~ "High",                    
+                      experience == "14" ~ "High",                    
+                      experience == "13" ~ "High",                                                       
+                      experience == "12" ~ "High",                    
+                      experience == "11" ~ "High",                                        
+                      experience == "10" ~ "Low",                    
+                      experience == "9" ~ "Low",                                        
+                      experience == "8" ~ "Low",                    
+                      experience == "7" ~ "Low",                            
+                      experience == "6" ~ "Low",
+                      experience == "5" ~ "Low",
+                      experience == "4" ~ "Low",
+                      experience == "3" ~ "Low",
+                      experience == "2" ~ "Low",
+                      experience == "1" ~ "Low")
+         )
+
+#kontroltjek om der er manglende værdier
+xtabs(~ gr_experience + experience , data=student_edu_df_3)
+
+
+#Fordeling gender gr_experience:
+gender_experience <-  xtabs(~ gender + gr_experience , data=student_edu_df_3)
+
+#Det gemte objektet
+gender_experience
+
+#prop.tabel kan anvendes til at udregne hver værdi en tabel i proprotion/relation til alle værdierne
+round(prop.table(gender_experience, 1)*100, digits = 0)
+
+```
+Flest mænd har - procentvist - høj erfaring (OBS!) ifølge den pågældende opdeling
+
+##Spørgsmål 6: Hvilken af de tre kategorier har flest træningstimer - mænd, kvinder eller andre?
+```{r Løsningsforslag 6}
+#Svært at aflæse i en krydstabel
+xtabs(~ gender + training_hours  , data=student_edu_df_3)
+
+#Vi beregner derfor gennemsnit grupperet for køn
+gender_avg_train_gr <- student_edu_df_3 %>% 
+  dplyr::select(gender, training_hours) %>%
+  group_by(gender) %>%
+  summarise(avg_t = mean(training_hours))
+
+#Vi gemmer resultatet i et objekt
+gender_avg_train_gr
+
+#En anden løsningsmetode er via aggregate()
+gender_avg_training <- aggregate(training_hours ~ gender, mean, data=student_edu_df_3)
+gender_avg_training 
+
+#Visualisering med gennemsnit
+student_edu_df_3 %>%
+  group_by(gender) %>%
+  summarize(avr_training = mean(training_hours)) %>%
+  ggplot(aes(x = gender, y = avr_training, fill = gender)) +
+  geom_col() + 
+  coord_flip() +
+  scale_fill_manual(values=c('#ffe0bd','#a39193', '#aa6f73', '#eea990'))
+
+```
+##Spørgsmål 7: Hvad fortæller dataen i forhold til relevant erfaring og om man er indskrevet på et universitet?
+```{r Løsningsforslag 7}
+
+#Gemmer i ny dataframe rel_exp_uni, hvor de to variabler (relevent_experience og enrolled_university) er krydstabuleret, omregnet til 100% og afrundet til 2 decimaler.  
+rel_exp_uni <- xtabs(~ relevent_experience + enrolled_university, data=student_edu_df_3)
+
+#Vi undersøger på række niveau, dvs. ud af dem, der har relevant erfaring, hvor mange procent er så på et fultidsstudie etc.
+#Bytter vi derimod (rel_exp_uni,1) ud med (rel_exp_uni,2), vil udregningen være på kolonne niveau  
+round(prop.table(rel_exp_uni,1)*100, digits = 2)
+
+```
+Data fortæller os, at de fleste med relevant erfaring ikke er indskrevet på et universitet
+
+##Spørgsmål 8: Hvordan er fordelingen mellem private og offentlige virksomheder - er der forskel på niveauet af experience og forskel på fordelingen af køn? 
+```{r Løsningsforslag 8}
+#Tjek af data
+freq(student_edu_df_3$company_type)
+#company_type ændrer vi til kun at indeholde privat og offentlig, samt ser bort fra kategorien other og NA
+
+#Tjek af data
+freq(student_edu_df_3$company_size)
+#Vi opdaterer grupperingen til at være mere fast struktureret 
+
+#Tjek af data
+freq(student_edu_df_3$experience)
+#Vi er interesserede i at lave denne kategori om til hele tal og dernæst integers. Derfor kommer vi til at lave en lidt grov inddeling i forhold til <1 (bliver til 0) og >20 (bliver til 25).
+
+#Tjek af data
+freq(student_edu_df_3$gender)
+
+#Ny inddeling af kategorier - vær opmærksom på, at dette klart er at gøre vold mod dataen, så vær kritisk overfor metode og resultater
+student_edu_df_4 <- student_edu_df_3 %>%
+  dplyr::select(company_type, gender,experience, company_size) %>%
+  mutate(public_private =
+           case_when(company_type == "Early Stage Startup" ~ "Private",
+                     company_type == "Funded Startup" ~ "Private",
+                     company_type == "Pvt Ltd" ~ "Private",
+                     company_type == "NGO" ~ "Public",
+                     company_type == "Public Sector" ~ "Public"
+                     )
+           ) %>%
+  mutate(company_size_grouped =
+           case_when(company_size == "<10"~ "1. < 10", 
+                     company_size == "10/49"~ "2. 10 - 49",
+                     company_size == "10/49"~ "3. 50-99",
+                     company_size == "100-500"~ "4. 100-500",
+                     company_size == "500-999"~ "5. 500-999",
+                     company_size == "1000-4999"~ "6. 1000-4999",
+                     company_size == "5000-9999"~ "7. 5000-9999",
+                     company_size == "10000+"~ "8. 10000+ "
+                     )
+           ) %>%
+     mutate(experience_int =
+           case_when(experience == "<1" ~ "0",
+                     experience == "1"  ~ "1",
+                     experience == "2"  ~ "2",
+                     experience == "3"  ~ "3",
+                     experience == "4"  ~ "4",
+                     experience == "5"  ~ "5",
+                     experience == "6"  ~ "6",
+                     experience == "7"  ~ "7",
+                     experience == "8"  ~ "8",
+                     experience == "9"  ~ "9",
+                     experience == "10"  ~ "10",
+                     experience == "11"  ~ "11",
+                     experience == "12"  ~ "12",
+                     experience == "13"  ~ "13",
+                     experience == "14"  ~ "14",
+                     experience == "15"  ~ "15",
+                     experience == "16"  ~ "16",
+                     experience == "17"  ~ "17",
+                     experience == "18"  ~ "18",
+                     experience == "19"  ~ "19",
+                     experience == "20"  ~ "20",
+                     experience == ">20"  ~ "25")
+  ) %>%
+  mutate_at(vars(experience_int), as.integer) %>%
+  drop_na() 
+
+#Forskellen mellem antallet af ansatte i offentlige og private virksomheder kan findes ved hjælp af freq()
+freq(student_edu_df_4$public_private)
+
+#Forskellen på ansættelse i det offentlige vs. det private baseret på køn
+gender_public_private <-  xtabs(~ public_private + gender, data=student_edu_df_4)
+gender_public_private
+round(prop.table(gender_public_private, 1)*100, digits = 0)
+
+#Vi kan beregne gennemsnit af erfaring, da vi har ændret værdierne til at være numeriske
+exp_mean <- aggregate(experience_int ~ public_private, mean, data=student_edu_df_4)
+exp_mean
+
+#Undersøgelse af virksomhedernes størrelse i forhold til om de er private eller offentlige¨
+xtabs(~ public_private + company_size_grouped, data=student_edu_df_4)
+size_pub_private <-xtabs(~ public_private + company_size_grouped, data=student_edu_df_4)
+round(prop.table(size_pub_private, 1)*100, digits = 0)
+
+```
+Kun lidt over 10% er ansat i det offentlige, hvor resten er i det private
+
+Kvinder er hyppigere ansat i den offentlige sektor end mænd og andre. OBS. Vær opmærksom på, hvad der sker med andre når det bliver lavet til procent
+
+Der er umiddelbart tale om den samme gennemsnitlige erfaring uanset om man er ansat i det private eller i det offentlige
+
+Der kommer ikke nogen tydelig tendens til udtryk i forbindelse med størrelse på virksomheder
+
+##Andet datasæt og stokastisk statistik
+Vi skal nu anvende andet datasæt, der omhandler en række eksamensresultater.
+
+Her bevæger vi os over i stokastisk statistik, altså udregninger, hvor vi forsøger at danne et billede af fremtiden baseret på data fra fortiden.
+Når man arbejder med stokastisk statistik er der en række hovedregler som ens data skal opfylde. Disse er til for, at sikre, at man har de bedst mulige forudsætninger for, at spå fremtiden. 
+
+Det er vigtigt at have in mente, at de resultater man får i forbindelse med stokatisk statistik altid vil være en 'kopi' af ens grunddata. I bund og grund regner man blot på, hvad sandsynligheden er for, at ens data gentager sig selv (at det der skete i går med x antal sandsynlighed sker i dag). Man vil altså ikke kunne spå ting, som ikke før er sket eller før har optrådt i ens data (Corona er et eksempel på dette).
+Derfor vil man også ofte få mere præcise resultater, hvis man har meget data at basere det på (eksempelvis data fra flere år etc). 
+
+De hovedregler man arbejder ud fra er:
+
+1. Variabel er på intervalskala niveau (Data kan rangordnes efter en enhedsskala, hvor hver enhed stiger eller falder med samme skala)
+2. Data er en tilfældigt udtrukket stikprøve
+3. Der er mere end 30 observationer (jo flere des bedre)
+4. Fordelingen omkring teststørrelsen er tilnærmelsesvis normalfordelt (dvs. klokkeformet fordeling omkring gennemsnittet)
+
+
+```{r Indlæs andet datasæt}
+#datasæt omhandlende eksamensresultater
+student_perf_df <- read_excel("data/students_performance.xlsx")
+
+```
+
+
+```{r Data overblik}
+
+glimpse(student_perf_df)
+head(student_perf_df)
+
+```
+Datasættet indeholder 9 kolonner og 1000 rækker
+
+```{r Data indblik}
+#unique()
+unique(student_perf_df$Class)
+
+#xtabs
+#Univariat tabel (en variabel)
+xtabs(~ CourseForm, student_perf_df)
+
+#Bivariat tabel (bivariat = 2 variabler)
+xtabs(~ CourseForm + Class, student_perf_df)
+
+#Vi tjekker om der er dubletter ved nøglen Student_ID
+anyDuplicated(student_perf_df$Student_ID)
+#Det er ingen dubletter, så nøglen virker fint
+
+#Baggrundsvariabler
+freq(student_perf_df$Gender)
+freq(student_perf_df$ParentalLevelOfEducation)
+
+#Uddannelsesvariabler
+freq(student_perf_df$CourseForm)
+freq(student_perf_df$Class)
+freq(student_perf_df$TestPreparationCourse)
+
+#De tre eksaminer
+descr(student_perf_df$MathScore)
+hist(student_perf_df$MathScore)
+
+descr(student_perf_df$TextAnalysisScore)
+hist(student_perf_df$TextAnalysisScore)
+
+descr(student_perf_df$CriticalThinkingScore)
+hist(student_perf_df$CriticalThinkingScore)
+
+```
+Vi starter ud med lidt deskriptiv statistik for at få gentaget nogle af de funktioner vi kender samt skabe indsigt i dataen. Derefter springer vi ud i en række stokastiske beregninger. Heriblandt: Korrelation (r-Pearson), cronbach's alfa etc. 
+
+##Spørgsmål 9: Ud fra hvilke parametre kan man definere performance? Og hvordan ser de studerendes samlede performance ud for de tre eksamiener?
+
+Løsningsforslag 9:
+
+Performance kan blandt andet vurderes ud fra de studerendes samlede resultater for de tre eksaminer.
+Vi laver en fælleskategori, der indeholder den samlede performance. Dette gør vi i et et såkaldt addiktivt indeks, hvor skalaen går fra 0 til 100.
+
+Først tjekker vi dataens 'kvalitet'. Dette vedrører blandt andet vores antagelser om variablerne: 
+
+Der er tale om stikprøvedata. Dette kan ofte ses ved, at datasættet indeholder 'lige/hele' tal dvs. i dette tilfælde 1000 obervationer/rækker. Det er selvfølgelig ikke en sikkert, at der er tale om en stikprøve, da det også bare kan være et tilfælde. Som udgangspunkt vil dette stå som metadata et sted eller man vil selv have sammensat datrasættet og derfor vide besked om dets beskaffenhed.
+
+Begrebsafklaring:
+Mode: Den hyppigst forekommende værdi i en stikprøve
+Mean: Værdiernes gennemsnit. Den totale sum af værdier divideret med antal observationer
+Standard deviation (standard afvigelse/spredning): Fordelingen omkring middelværdien dvs. observationernes gennemsnitlige afvigelse fra gennemsnittet
+Min: Mindste værdien
+Q1 (1. kvartil): Den nedre kvartal, når datasættet er rangeret efter størrelse. Den værdi hvorunder 25% af målingerne ligger.
+Median: Den midterste værdi, når datasættet er rangeret efter størrelse. Den værdi som deler målingerne i to lige store dele.
+Q3 (3.kvartil): Den øvre kvartal, når datasættet er rangeret efter størrelse. Den værdi som 75% af målingerne ligger under.
+MAX: Maximum værdien
+MAD: Median Absolute Deviation - defineret som medianen af de absolutte afvigelser fra dataens median
+IQR: Inter-Quartile Range – forskellen mellem Q3 og Q1
+CV: Coefficient of Variation – Spredningen delt med middelværdien. 
+
+```{r Løsningsforslag 9}
+
+#Indeks med variablen TotalPerformance i en ny dataframe
+#Vi dividerer med 300 og ganger det derefter med 100. Dette gør vi, da teoretisk og empirisk maxværdi er 300. Således skaber vi et indeks, der går fra 0-100
+student_perf_df_2 <- student_perf_df %>% 
+  mutate(TotalPerformance = ((MathScore + TextAnalysisScore + CriticalThinkingScore)/300)*100)
+
+#Vi kvalitetsstester det nye indeks ved at tage udgangspunkt i de enkelte variabler, som vi har sammensat den nye variabel af
+#Vi laver en lille data frame til at teste med
+Indextest <- student_perf_df_2 %>%
+  dplyr::select(MathScore, TextAnalysisScore, CriticalThinkingScore)
+
+#Her tester vi samvariation for at se om vores teoretiske validitetsbetragtning om, at de tre variabler giver mening i et samlet indeks
+attach(Indextest)
+#Test af korrelationskoefficent ved en r-pearson test
+rcor.test(Indextest, method = "pearson")
+
+#Test af cronbach's alfa
+cronbach.alpha(Indextest, CI=TRUE)
+
+#Den samlede performance 
+descr(student_perf_df_2$TotalPerformance)
+hist(student_perf_df_2$TotalPerformance)
+
+```
+Korrelation (Pearson):
+Beskriver graden af sammenhæng mellem variabler - der er ikke tale om en direkte årsagssammenhæng, men at den ene variabel ofte kan forudsige den anden og omvendt (om variablerne følger hinanden). Man tager udgangspunkt i en såkaldt korrelationskoefficent (også kaldet r), der spænder fra -1 til +1. Er r tæt på -1 er der en 'negativ' sammenhæng - dvs. at den ene variable falder når den anden stiger. Er r tæt på +1 er der tale om en positiv sammenhæng, hvor variablerne både stiger og falder sammen. Man kan se det som to magneter, der enten frastøder hinanden i deres bevægelse eller tiltrækker hinanden. 
+
+Ved at teste sammenhængen mellem de tre fag og eksamensresultaterne kan vi se, at der er en høj positiv sammenhæng mellem fagene og karakterene. 
+
+Cronbach's alfa:
+Anvendes ofte i forbindelse med test af reliabititet. I denne forbindelse skal reliabilitet ses som pålidelighed i ens data forstået på den måde, at gentagende test eller forsøg baseret på de samme data, vil give de samme resultater.
+Cronbach's alfa udregnes på en skala fra 0 til 1.
+Høje Cronbachs alfa værdier indikerer, at svar for hver deltager på tværs af et sæt spørgsmål er konsistente. For eksempel, når de studerenes resultater er høje ved et af emnerne vil de sandsynligvis også have høje resultater ved de andre emner. Denne konsistens indikerer, at målingerne er pålidelige, og emnerne kan måles ud fra den samme 'egenskab'.
+Omvendt indikerer lave Cronbachs alfa værdier, at elementerne ikke er pålidelige og måles ud fra samme 'egenskab'. Her ville høje resultater ved et fag ikke tyde på, at de studerende havde høje resultater ved de andre fag. Det er derfor usandsynligt, at resultaterne måler den samme 'egenskab', fordi målingerne er her er upålidelige.
+
+Ved at teste reliabiliteten gennem cronbach's alfa kan vi se, at der er meget stor sammenhæng mellem testresultaterne. Det vil sige, at de studerende der scorer højt i en eksamen med stor sandsynlighed også scorer højt i de andre eksaminer.
+
+Vi kan se, at der generelt er en høj sammenhæng mellem resultaterne for de forskellige eksaminer. Generelt er fordelingen normalfordelt (klokkeformet). Det vil i dette tilfælde betyde, at de studerende generelt har et gennemsnit på ca. 68. Derudover kan vi se, at der er studerende, der har fået topkarakter i alle tre eksaminer.
+
+##Spørgsmål 10: Hvis studerende med mindre end 50 point i samlet performance ikke har bestået - hvor mange studerende på hvert hold består så ikke?
+
+```{r Løsningsforslag 10}
+
+#Vi laver en variabel kaldet Evaluation, der angiver om en studerende er dumpet. Så hvis TotalPerformace er under 50 point tilknyttes værdien 'failed'
+student_perf_df_3 <- student_perf_df_2 %>% 
+  mutate(Evaluation = if_else(TotalPerformance < 50, "Failed", "Passed"))
+
+#Vi anvender freq til at se, hvor mange der er dumpet
+freq(student_perf_df_3$Evaluation)
+
+#Vi kan aflæse, at i alt 103 studerende er dumpet. Vi kan derfor udregne, hvor stor en procentdel af de studerende det samlet udgør ved følgende:
+TotalFailedPct <- (103/1000)*100
+#Dette giver os en øget indsigt i tallene, når vi skal kigge på de forskellige hold
+
+#Ny dataframe, hvor vi tager udgangspunkt i de forskellige hold. TotalPerformance er kun med som referencepunkt, men bruges ikke i beregningerne
+student_perf_df_4 <- student_perf_df_3 %>% 
+  dplyr::select(Class, TotalPerformance, Evaluation)
+#Fordelingen på de forskellige hold
+PrClass <- xtabs(~ Evaluation + Class, data = student_perf_df_4)
+PrClass
+#Her har Class C flest studerende, der ikke er bestået, men er samtidig det hold med flest studerende på 
+
+#Vi undersøger fordelingen i procent
+round(prop.table(PrClass, 2)*100, digits = 0)
+#Her er det Class A, hvor der procentmæssigt er flest, der ikke består
+
+```
+
+```{r Løsningsforslag 10 - fortsat}
+
+#Et visuelt perspektiv på den samlede performance på hvert hold - den røde linje markerer scoren på 50. Den røde prik markerer gennemsnittet.
+ggplot(student_perf_df_4, aes(x = Class, y = TotalPerformance)) + 
+  geom_boxplot() +
+  stat_summary(fun=mean, geom='point', shape=20, size=5, color='red') +
+  geom_hline(yintercept=50, color="red") +
+  theme_minimal()
+
+```
+
+##Spørgsmål 11: Er der hold, hvor gennemsnittet fror den samlede performance er kritisk i forhold til dumpegrænsen på 50 point?
+```{r Løsningsforslag 11}
+
+#Vi laver en ny dataframe, hvor vi undersøger Class A, da den forrige opgave viste, at dette hold var udfordret i forbindelse med testresultaterne
+student_perf_df_5 <- student_perf_df_4 %>%
+  dplyr::filter(Class == "Class A")
+summary(student_perf_df_5$TotalPerformance)  
+#Median på 61 og Gns 63 er højere end den kritiske grænse på 50
+
+#Visuel formidling af, hvordan pointene fordeler sig
+ggplot(student_perf_df_5, aes(x=TotalPerformance, fill=Evaluation)) + 
+  geom_histogram(binwidth=1, color="gray") +
+  geom_vline(xintercept=51, color="black") +
+  theme_minimal()
+#Her ses det blandt andet, at en del af de studerende i Class A kun 'lige' kommer over minimumsgrænsen for at være bestået
+
+
+
+
+```
+
+```{r Løsningsforslag 11 - fortsat}
+#t-test, med 95% statistisk sikkerhed (class A)
+t.test(student_perf_df_5$TotalPerformance, mu=50, alternative = 'greater', conf.level = 0.95)
+
+#Det er vigtigt at være nuanceret i sin vurdering af p-værdier, da det er forskelligt om man accepterer et alfaniveau på 0.05 dvs. 95% statistisk konfidens eller om man derimod kun accepterer en statistisk konfidens på 99% dvs 0.01
+
+#Test af normalfordeling via en Shapiro-Wilk normalitets test - er p-værdien højere end det valgte alfaniveau (0.05) er dataen normalfordelt
+#Jo tættere værdien W er på 1, jo mere er tale om en normalfordeling
+shapiro.test(student_perf_df_5$TotalPerformance)
+
+```
+Gennemsnittet for Class A er 63. Med en statistisk signifikans på 95% vil gennemsnittet være på 60,4 og op efter.
+Med en p-værdi på 2.346e-13 som er mindre end alfa på 0.05 (p-værdi < alfaværdi = Afvis Ho) afviser vi Ho.
+Vi accepterer dermed Ha, at Class A statistisk set har et højere gennemsnit end den kritiske grænseværdi på 50
+
+Vi undersøger forudsætningerne for en stokastisk besvarelse
+1. Variabel er på intervalaskala niveau - Ja indeks løber fra 0 til 100.
+2. Data er et tilfældigt udtrukket stikprøve - Ja de 1000 studerende er en stikprøve.
+3. Der er mere end 30 observationer - Ja, der er 1000.
+4. Fordelingen omkring teststørrelsen er tilnærmelsesvis normalfordelt (dvs klokkeformet fordeling om gennemsnit) - Det så vi i ovenstående visualisering samt udregnede vi med Shapiro-Wilk
+
+En-sidet t-test:
+Vi anvendte en en-sidet t-test, hvor vi testede om gennesnittet var mindre end 50. Vi angav dataframe samt vores testvariabel TotalPerformance, hvorefter vi angav testværdien (mu) samt vores alternative hypotese. Testværdien er, at gennemsnittet i virkeligheden er 50, og da vi angiver den alternative hypotese Ha til, at gennemsniuttet er større end 50, så er Ho, at gennemsnittet er 50 eller under.
+Grunden til at vi laver en en-sidet t-test er, at vi kun tester om gennemsnittet er mindre end 50. Det betyder, at vi får et konfidensinterval gående fra en værdi til uendelig, da vi ikke har testet begge sider af teststørrelsen.
+
+Ved en t-test hypotesetestes der i forhold til om to middelværdier er identiske. Hvis testresultatet er stor, tyder det på, at der er tale om en signifikant forskel mellem to middelværdier (nul-hypotesen forkastes). Er testresultatet lille indikeres der, at forskellende skyldes tilfældigheder (nul-hypotesen accepteres).
+
+god forklaring her: https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/t.test 
+
+
+```{r Løsningsforslag 11 - udvidet}
+#Vi tester nu på tværs af alle hold og deres generelle performance
+#Test af forudsætning om normalfordeling. Ho=fordeling er ikke normaltfordelt, Ha=fordelingen er normalfordelt.
+hist(student_perf_df_4$TotalPerformance)
+
+#Klokkeformet, men med lidt skævhed. dvs. at der kan være lidt bias i resultatet
+
+#Visualisering af fordelingen - OBS. 67.77 er gennemsnittet
+ggplot(student_perf_df_4, aes(x=TotalPerformance)) + 
+  geom_histogram(binwidth=1, color="black", fill = "#ffe0bd") +
+  geom_vline(xintercept=67.77, color="red") +
+  theme_minimal()
+
+shapiro.test(student_perf_df_4$TotalPerformance)
+#P-værdi > alfaniveau så afviser vi Ho, men her er P-værdi tæt på nul, så vi må acceptere Ho. Konklusionen er defor, at vi har ikke en normalfordeling, så formelt set er der tale om et forudsætningsbrud, når vi gennemfører t-testen. Så der er altså en vis usikkerhed/bias omkring test-resultatet.
+t.test(student_perf_df_4$TotalPerformance, mu=50, alternative = 'greater', conf.level = 0.95)
+
+```
+
+##Spørgsmål 12: Er der en statistisk forskel på kønnenes samlede performance?
+```{r Løsningsforslag 12}
+#Vi vælger relevante variabler
+student_perf_df_6 <- student_perf_df_3 %>% 
+  dplyr::select(TotalPerformance, Gender)
+
+#Vi undersøger gennemsnittet for performance baseret på køn
+GenderPerf <- aggregate(TotalPerformance ~ Gender, mean, data = student_perf_df_6)
+GenderPerf
+#Female: 69,6 og Male: 65,8
+
+#Visuel præsentation af fordelingen
+ggplot(data=student_perf_df_6, aes(x = Gender, y = TotalPerformance)) + 
+  geom_boxplot() +
+  stat_summary(fun=mean, geom='point', shape=20, size=5, color='red') +
+  geom_hline(yintercept=50, color="red")+
+  theme_minimal()
+
+#Vi laver en to-sidet t-test
+t.test(student_perf_df_6$TotalPerformance~student_perf_df_6$Gender)
+
+```
+To-sidet t-test:
+Vi lavede en to-sidet test, hvilket ses ved at vi ikke angav en test af grænseværdi. Da vi ikke angav confidensniveau anvendes standarden på 95%
+I en to-sidet test trækkes hver af de to gruppers gennemsnit fra hinanden, og t-testen tester for om differencen er 0. 
+Ho er at differencen er 0. Dvs GNS(Kvinder) - GNS(Mænd) = 0.
+Ha: Den ene gruppe har et statistisk signifikant højere gennemsnit
+
+GNS(kvinder) = 69.6 mens GNS(Mænd) = 65.8
+
+Konfidensintervallet ligger derfor ikke omkring 0, men ligger fra 2.0 til 5.4, derfor afvises så Ho.
+P-værdi e-5 fortæller, at p-værdien er meget tæt på nul, og der er derfor stærk evidens mod Ho.
+Ha accpeteres. Det vil sige, at der er forskel på de to kategorier, hvor kvinder har et statistisk signifikant højere gennemsnit end mænd.
+
+
+  
